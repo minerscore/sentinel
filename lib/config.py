@@ -23,7 +23,7 @@ def get_ravendark_conf():
         ravendark_conf = os.path.join(home, ".ravendarkcore/ravendark.conf")
         if sys.platform == 'darwin':
             ravendark_conf = os.path.join(home, "Library/Application Support/RavenDarkCore/ravendark.conf")
-        if os.environ.get('ENVIR') == 'docker'
+        if os.environ.get('ENVIR') == 'docker':
             ravendark_conf = os.path.join(home, "conf/ravendark.conf")
 
     ravendark_conf = sentinel_cfg.get('ravendark_conf', ravendark_conf)
