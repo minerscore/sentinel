@@ -21,7 +21,7 @@ Update system packages and ensure virtualenv is installed:
     $ sudo apt-get update
     $ sudo apt-get -y install python-virtualenv
 
-Make sure the local Sovereign daemon running is at least version 0.2.0 (20000)
+Make sure the local Sovereign daemon running is at least version 2.0.1.0 (2000100)
 
     $ sov-cli getinfo | grep version
 
