@@ -16,7 +16,7 @@ def test_sovd():
     config_text = SovereignConfig.slurp_config_file(config.sov_conf)
     network = 'mainnet'
     is_testnet = False
-    genesis_hash = u'0000043c6374e2da57aca089e7a5110f7848349c44a4522c3066ba1abf126633'
+    genesis_hash = u'0000093e6f9d658353d8def21d98a5a5126a388a7c5987bce7cac4ccf5299dd0'
     for line in config_text.split("\n"):
         if line.startswith('testnet=1'):
             network = 'testnet'
