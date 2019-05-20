@@ -3,32 +3,32 @@
 """
 import sys
 import os
-from ravendark_config import RavenDarkConfig
+from sov_config import SovereignConfig
 
 default_sentinel_config = os.path.normpath(
     os.path.join(os.path.dirname(__file__), '../sentinel.conf')
 )
 sentinel_config_file = os.environ.get('SENTINEL_CONFIG', default_sentinel_config)
-sentinel_cfg = RavenDarkConfig.tokenize(sentinel_config_file)
+sentinel_cfg = SovereignConfig.tokenize(sentinel_config_file)
 sentinel_version = "1.2.0"
-min_ravendarkd_proto_version_with_sentinel_ping = 70207
+min_sovd_proto_version_with_sentinel_ping = 70208
 
 
-def get_ravendark_conf():
+def get_sov_conf():
     if sys.platform == 'win32':
-        ravendark_conf = os.path.join(os.getenv('APPDATA'), "RavenDarkCore/ravendark.conf")
+        sov_conf = os.path.join(os.getenv('APPDATA'), "sovcore/sov.conf")
     else:
         home = os.environ.get('HOME')
 
-        ravendark_conf = os.path.join(home, ".ravendarkcore/ravendark.conf")
+        sov_conf = os.path.join(home, ".sovcore/sov.conf")
         if sys.platform == 'darwin':
-            ravendark_conf = os.path.join(home, "Library/Application Support/RavenDarkCore/ravendark.conf")
+            sov_conf = os.path.join(home, "Library/Application Support/SovereignCore/sov.conf")
         if os.environ.get('ENVIR') == 'docker':
-            ravendark_conf = os.path.join(home, "conf/ravendark.conf")
+            sov_conf = os.path.join(home, "conf/sov.conf")
 
-    ravendark_conf = sentinel_cfg.get('ravendark_conf', ravendark_conf)
+    sov_conf = sentinel_cfg.get('sov_conf', sov_conf)
 
-    return ravendark_conf
+    return sov_conf
 
 
 def get_network():
@@ -88,7 +88,7 @@ def get_db_conn():
     return db
 
 
-ravendark_conf = get_ravendark_conf()
+sov_conf = get_sov_conf()
 network = get_network()
 rpc_host = get_rpchost()
 db = get_db_conn()

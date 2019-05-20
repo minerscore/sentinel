@@ -12,14 +12,14 @@ from misc import printdbg, epoch2str
 import time
 
 
-def is_valid_ravendark_address(address, network='mainnet'):
+def is_valid_sov_address(address, network='mainnet'):
     # Only public key addresses are allowed
     # A valid address is a RIPEMD-160 hash which contains 20 bytes
     # Prior to base58 encoding 1 version byte is prepended and
     # 4 checksum bytes are appended so the total number of
     # base58 encoded bytes should be 25.  This means the number of characters
     # in the encoding should be about 34 ( 25 * log2( 256 ) / log2( 58 ) ).
-    ravendark_version = 140 if network == 'testnet' else 76
+    sov_version = 140 if network == 'testnet' else 76
 
     # Check length (This is important because the base58 library has problems
     # with long addresses (which are invalid anyway).
@@ -32,10 +32,10 @@ def is_valid_ravendark_address(address, network='mainnet'):
         decoded = base58.b58decode_chk(address)
         address_version = ord(decoded[0:1])
     except:
-        # rescue from exception, not a valid RavenDark address
+        # rescue from exception, not a valid Sovereign address
         return False
 
-    if (address_version != ravendark_version):
+    if (address_version != sov_version):
         return False
 
     return True
@@ -163,7 +163,7 @@ def create_superblock(proposals, event_block_height, budget_max, sb_epoch_time, 
             payment_amounts='|'.join([pd['amount'] for pd in payments]),
             proposal_hashes='|'.join([pd['proposal'] for pd in payments])
         )
-        data_size = len(sb_temp.ravendarkd_serialise())
+        data_size = len(sb_temp.sovd_serialise())
 
         if data_size > maxgovobjdatasize:
             printdbg("MAX_GOVERNANCE_OBJECT_DATA_SIZE limit reached!")
@@ -194,25 +194,25 @@ def create_superblock(proposals, event_block_height, budget_max, sb_epoch_time, 
 
 
 # shims 'til we can fix the JSON format
-def SHIM_serialise_for_ravendarkd(sentinel_hex):
+def SHIM_serialise_for_sovd(sentinel_hex):
     from models import GOVOBJ_TYPE_STRINGS
 
     # unpack
     obj = deserialise(sentinel_hex)
 
-    # shim for ravendarkd
+    # shim for sovd
     govtype_string = GOVOBJ_TYPE_STRINGS[obj['type']]
 
-    # superblock => "trigger" in ravendarkd
+    # superblock => "trigger" in sovd
     if govtype_string == 'superblock':
         govtype_string = 'trigger'
 
-    # ravendarkd expects an array (will be deprecated)
+    # sovd expects an array (will be deprecated)
     obj = [(govtype_string, obj,)]
 
     # re-pack
-    ravendarkd_hex = serialise(obj)
-    return ravendarkd_hex
+    sovd_hex = serialise(obj)
+    return sovd_hex
 
 
 # convenience
@@ -236,7 +236,7 @@ def did_we_vote(output):
     err_msg = ''
 
     try:
-        detail = output.get('detail').get('ravendark.conf')
+        detail = output.get('detail').get('sov.conf')
         result = detail.get('result')
         if 'errorMessage' in detail:
             err_msg = detail.get('errorMessage')

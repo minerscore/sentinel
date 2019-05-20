@@ -1,9 +1,9 @@
 #!/bin/bash
 set -evx
 
-mkdir ~/.ravendarkcore
+mkdir ~/.sovcore
 
 # safety check
-if [ ! -f ~/.ravendarkcore/.ravendark.conf ]; then
-  cp share/ravendark.conf.example ~/.ravendarkcore/ravendark.conf
+if [ ! -f ~/.sovcore/.sov.conf ]; then
+  cp share/sov.conf.example ~/.sovcore/sov.conf
 fi

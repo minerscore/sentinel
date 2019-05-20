@@ -1,4 +1,4 @@
-import sys
+sovimport sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'lib'))
@@ -56,23 +56,23 @@ def is_database_correctly_configured():
     return configured
 
 
-def has_ravendark_conf():
+def has_sov_conf():
     import config
     import io
 
-    valid_ravendark_conf = False
+    valid_sov_conf = False
 
-    # ensure ravendark_conf exists & readable
+    # ensure sov_conf exists & readable
     #
-    # if not, print a message stating that RavenDark Core must be installed and
-    # configured, including JSONRPC access in ravendark.conf
+    # if not, print a message stating that Sovereign Core must be installed and
+    # configured, including JSONRPC access in sov.conf
     try:
-        f = io.open(config.ravendark_conf)
-        valid_ravendark_conf = True
+        f = io.open(config.sov_conf)
+        valid_sov_conf = True
     except IOError as e:
         print(e)
 
-    return valid_ravendark_conf
+    return valid_sov_conf
 
 
 # === begin main
@@ -94,8 +94,8 @@ def main():
         print("Please ensure correct database configuration.")
         sys.exit(1)
 
-    if not has_ravendark_conf():
-        print("RavenDarkCore must be installed and configured, including JSONRPC access in ravendark.conf")
+    if not has_sov_conf():
+        print("SovereignCore must be installed and configured, including JSONRPC access in sov.conf")
         sys.exit(1)
 
 

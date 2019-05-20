@@ -8,12 +8,12 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'lib'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 import config
 
-from ravendarkd import RavenDarkDaemon
-from ravendark_config import RavenDarkConfig
+from sovd import SovereignDaemon
+from sov_config import SovereignConfig
 
 
-def test_ravendarkd():
-    config_text = RavenDarkConfig.slurp_config_file(config.ravendark_conf)
+def test_sovd():
+    config_text = SovereignConfig.slurp_config_file(config.sov_conf)
     network = 'mainnet'
     is_testnet = False
     genesis_hash = u'0000043c6374e2da57aca089e7a5110f7848349c44a4522c3066ba1abf126633'
@@ -23,15 +23,15 @@ def test_ravendarkd():
             is_testnet = True
             genesis_hash = u'00000bafbc94add76cb75e2ec92894837288a481e5c005f6563d91623bf8bc2c'
 
-    creds = RavenDarkConfig.get_rpc_creds(config_text, network)
-    ravendarkd = RavenDarkDaemon(**creds)
-    assert ravendarkd.rpc_command is not None
+    creds = SovereignConfig.get_rpc_creds(config_text, network)
+    sovd = SovereignDaemon(**creds)
+    assert sovd.rpc_command is not None
 
-    assert hasattr(ravendarkd, 'rpc_connection')
+    assert hasattr(sovd, 'rpc_connection')
 
-    # RavenDark testnet block 0 hash == 00000bafbc94add76cb75e2ec92894837288a481e5c005f6563d91623bf8bc2c
+    # Sovereign testnet block 0 hash == 00000bafbc94add76cb75e2ec92894837288a481e5c005f6563d91623bf8bc2c
     # test commands without arguments
-    info = ravendarkd.rpc_command('getinfo')
+    info = sovd.rpc_command('getinfo')
     info_keys = [
         'blocks',
         'connections',
@@ -48,4 +48,4 @@ def test_ravendarkd():
     assert info['testnet'] is is_testnet
 
     # test commands with args
-    assert ravendarkd.rpc_command('getblockhash', 0) == genesis_hash
+    assert sovd.rpc_command('getblockhash', 0) == genesis_hash

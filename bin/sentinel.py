@@ -5,7 +5,7 @@ sys.path.append(os.path.normpath(os.path.join(os.path.dirname(__file__), '../lib
 import init
 import config
 import misc
-from ravendarkd import RavenDarkDaemon
+from sovd import SovereignDaemon
 from models import Superblock, Proposal, GovernanceObject
 from models import VoteSignals, VoteOutcomes, Transient
 import socket
@@ -19,30 +19,30 @@ from scheduler import Scheduler
 import argparse
 
 
-# sync ravendarkd gobject list with our local relational DB backend
-def perform_ravendarkd_object_sync(ravendarkd):
-    GovernanceObject.sync(ravendarkd)
+# sync sovd gobject list with our local relational DB backend
+def perform_sovd_object_sync(sovd):
+    GovernanceObject.sync(sovd)
 
 
-def prune_expired_proposals(ravendarkd):
+def prune_expired_proposals(sovd):
     # vote delete for old proposals
-    for proposal in Proposal.expired(ravendarkd.superblockcycle()):
-        proposal.vote(ravendarkd, VoteSignals.delete, VoteOutcomes.yes)
+    for proposal in Proposal.expired(sovd.superblockcycle()):
+        proposal.vote(sovd, VoteSignals.delete, VoteOutcomes.yes)
 
 
-# ping ravendarkd
-def sentinel_ping(ravendarkd):
+# ping sovd
+def sentinel_ping(sovd):
     printdbg("in sentinel_ping")
 
-    ravendarkd.ping()
+    sovd.ping()
 
     printdbg("leaving sentinel_ping")
 
 
-def attempt_superblock_creation(ravendarkd):
-    import ravendarklib
+def attempt_superblock_creation(sovd):
+    import sovlib
 
-    if not ravendarkd.is_masternode():
+    if not sovd.is_masternode():
         print("We are not a Masternode... can't submit superblocks!")
         return
 
@@ -53,7 +53,7 @@ def attempt_superblock_creation(ravendarkd):
     # has this masternode voted on *any* superblocks at the given event_block_height?
     # have we voted FUNDING=YES for a superblock for this specific event_block_height?
 
-    event_block_height = ravendarkd.next_superblock_height()
+    event_block_height = sovd.next_superblock_height()
 
     if Superblock.is_voted_funding(event_block_height):
         # printdbg("ALREADY VOTED! 'til next time!")
@@ -61,21 +61,21 @@ def attempt_superblock_creation(ravendarkd):
         # vote down any new SBs because we've already chosen a winner
         for sb in Superblock.at_height(event_block_height):
             if not sb.voted_on(signal=VoteSignals.funding):
-                sb.vote(ravendarkd, VoteSignals.funding, VoteOutcomes.no)
+                sb.vote(sovd, VoteSignals.funding, VoteOutcomes.no)
 
         # now return, we're done
         return
 
-    if not ravendarkd.is_govobj_maturity_phase():
+    if not sovd.is_govobj_maturity_phase():
         printdbg("Not in maturity phase yet -- will not attempt Superblock")
         return
 
-    proposals = Proposal.approved_and_ranked(proposal_quorum=ravendarkd.governance_quorum(), next_superblock_max_budget=ravendarkd.next_superblock_max_budget())
-    budget_max = ravendarkd.get_superblock_budget_allocation(event_block_height)
-    sb_epoch_time = ravendarkd.block_height_to_epoch(event_block_height)
+    proposals = Proposal.approved_and_ranked(proposal_quorum=sovd.governance_quorum(), next_superblock_max_budget=sovd.next_superblock_max_budget())
+    budget_max = sovd.get_superblock_budget_allocation(event_block_height)
+    sb_epoch_time = sovd.block_height_to_epoch(event_block_height)
 
-    maxgovobjdatasize = ravendarkd.govinfo['maxgovobjdatasize']
-    sb = ravendarklib.create_superblock(proposals, event_block_height, budget_max, sb_epoch_time, maxgovobjdatasize)
+    maxgovobjdatasize = sovd.govinfo['maxgovobjdatasize']
+    sb = sovlib.create_superblock(proposals, event_block_height, budget_max, sb_epoch_time, maxgovobjdatasize)
     if not sb:
         printdbg("No superblock created, sorry. Returning.")
         return
@@ -83,12 +83,12 @@ def attempt_superblock_creation(ravendarkd):
     # find the deterministic SB w/highest object_hash in the DB
     dbrec = Superblock.find_highest_deterministic(sb.hex_hash())
     if dbrec:
-        dbrec.vote(ravendarkd, VoteSignals.funding, VoteOutcomes.yes)
+        dbrec.vote(sovd, VoteSignals.funding, VoteOutcomes.yes)
 
         # any other blocks which match the sb_hash are duplicates, delete them
         for sb in Superblock.select().where(Superblock.sb_hash == sb.hex_hash()):
             if not sb.voted_on(signal=VoteSignals.funding):
-                sb.vote(ravendarkd, VoteSignals.delete, VoteOutcomes.yes)
+                sb.vote(sovd, VoteSignals.delete, VoteOutcomes.yes)
 
         printdbg("VOTED FUNDING FOR SB! We're done here 'til next superblock cycle.")
         return
@@ -96,24 +96,24 @@ def attempt_superblock_creation(ravendarkd):
         printdbg("The correct superblock wasn't found on the network...")
 
     # if we are the elected masternode...
-    if (ravendarkd.we_are_the_winner()):
+    if (sovd.we_are_the_winner()):
         printdbg("we are the winner! Submit SB to network")
-        sb.submit(ravendarkd)
+        sb.submit(sovd)
 
 
-def check_object_validity(ravendarkd):
+def check_object_validity(sovd):
     # vote (in)valid objects
     for gov_class in [Proposal, Superblock]:
         for obj in gov_class.select():
-            obj.vote_validity(ravendarkd)
+            obj.vote_validity(sovd)
 
 
-def is_ravendarkd_port_open(ravendarkd):
+def is_sovd_port_open(sovd):
     # test socket open before beginning, display instructive message to MN
     # operators if it's not
     port_open = False
     try:
-        info = ravendarkd.rpc_command('getgovernanceinfo')
+        info = sovd.rpc_command('getgovernanceinfo')
         port_open = True
     except (socket.error, JSONRPCException) as e:
         print("%s" % e)
@@ -122,21 +122,21 @@ def is_ravendarkd_port_open(ravendarkd):
 
 
 def main():
-    ravendarkd = RavenDarkDaemon.from_ravendark_conf(config.ravendark_conf)
+    sovd = SovereignDaemon.from_sov_conf(config.sov_conf)
     options = process_args()
 
-    # check ravendarkd connectivity
-    if not is_ravendarkd_port_open(ravendarkd):
-        print("Cannot connect to ravendarkd. Please ensure ravendarkd is running and the JSONRPC port is open to Sentinel.")
+    # check sovd connectivity
+    if not is_sovd_port_open(sovd):
+        print("Cannot connect to sovd. Please ensure sovd is running and the JSONRPC port is open to Sentinel.")
         return
 
-    # check ravendarkd sync
-    if not ravendarkd.is_synced():
-        print("ravendarkd not synced with network! Awaiting full sync before running Sentinel.")
+    # check sovd sync
+    if not sovd.is_synced():
+        print("sovd not synced with network! Awaiting full sync before running Sentinel.")
         return
 
     # ensure valid masternode
-    if not ravendarkd.is_masternode():
+    if not sovd.is_masternode():
         print("Invalid Masternode Status, cannot continue.")
         return
 
@@ -168,19 +168,19 @@ def main():
     # ========================================================================
     #
     # load "gobject list" rpc command data, sync objects into internal database
-    perform_ravendarkd_object_sync(ravendarkd)
+    perform_sovd_object_sync(sovd)
 
-    if ravendarkd.has_sentinel_ping:
-        sentinel_ping(ravendarkd)
+    if sovd.has_sentinel_ping:
+        sentinel_ping(sovd)
 
     # auto vote network objects as valid/invalid
-    # check_object_validity(ravendarkd)
+    # check_object_validity(sovd)
 
     # vote to delete expired proposals
-    prune_expired_proposals(ravendarkd)
+    prune_expired_proposals(sovd)
 
     # create a Superblock if necessary
-    attempt_superblock_creation(ravendarkd)
+    attempt_superblock_creation(sovd)
 
     # schedule the next run
     Scheduler.schedule_next_run()

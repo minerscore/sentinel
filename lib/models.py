@@ -11,7 +11,7 @@ from peewee import IntegerField, CharField, TextField, ForeignKeyField, DecimalF
 import peewee
 import playhouse.signals
 import misc
-import ravendarkd
+import sovd
 from misc import (printdbg, is_numeric)
 import config
 from bitcoinrpc.authproxy import JSONRPCException
@@ -28,7 +28,7 @@ db.connect()
 
 
 # TODO: lookup table?
-RAVENDARKD_GOVOBJ_TYPES = {
+SOVD_GOVOBJ_TYPES = {
     'proposal': 1,
     'superblock': 2,
 }
@@ -74,10 +74,10 @@ class GovernanceObject(BaseModel):
     class Meta:
         db_table = 'governance_objects'
 
-    # sync ravendarkd gobject list with our local relational DB backend
+    # sync sovd gobject list with our local relational DB backend
     @classmethod
-    def sync(self, ravendarkd):
-        golist = ravendarkd.rpc_command('gobject', 'list')
+    def sync(self, sovd):
+        golist = sovd.rpc_command('gobject', 'list')
 
         # objects which are removed from the network should be removed from the DB
         try:
@@ -89,7 +89,7 @@ class GovernanceObject(BaseModel):
 
         for item in golist.values():
             try:
-                (go, subobj) = self.import_gobject_from_ravendarkd(ravendarkd, item)
+                (go, subobj) = self.import_gobject_from_sovd(sovd, item)
             except Exception as e:
                 printdbg("Got an error upon import: %s" % e)
 
@@ -101,9 +101,9 @@ class GovernanceObject(BaseModel):
         return query
 
     @classmethod
-    def import_gobject_from_ravendarkd(self, ravendarkd, rec):
+    def import_gobject_from_sovd(self, sovd, rec):
         import decimal
-        import ravendarklib
+        import sovlib
         import binascii
         import gobject_json
 
@@ -133,11 +133,11 @@ class GovernanceObject(BaseModel):
         # set object_type in govobj table
         gobj_dict['object_type'] = subclass.govobj_type
 
-        # exclude any invalid model data from ravendarkd...
+        # exclude any invalid model data from sovd...
         valid_keys = subclass.serialisable_fields()
         subdikt = {k: dikt[k] for k in valid_keys if k in dikt}
 
-        # get/create, then sync vote counts from ravendarkd, with every run
+        # get/create, then sync vote counts from sovd, with every run
         govobj, created = self.get_or_create(object_hash=object_hash, defaults=gobj_dict)
         if created:
             printdbg("govobj created = %s" % created)
@@ -146,19 +146,19 @@ class GovernanceObject(BaseModel):
             printdbg("govobj updated = %d" % count)
         subdikt['governance_object'] = govobj
 
-        # get/create, then sync payment amounts, etc. from ravendarkd - RavenDarkd is the master
+        # get/create, then sync payment amounts, etc. from sovd - Sovereignd is the master
         try:
             newdikt = subdikt.copy()
             newdikt['object_hash'] = object_hash
             if subclass(**newdikt).is_valid() is False:
-                govobj.vote_delete(ravendarkd)
+                govobj.vote_delete(sovd)
                 return (govobj, None)
 
             subobj, created = subclass.get_or_create(object_hash=object_hash, defaults=subdikt)
         except Exception as e:
             # in this case, vote as delete, and log the vote in the DB
-            printdbg("Got invalid object from ravendarkd! %s" % e)
-            govobj.vote_delete(ravendarkd)
+            printdbg("Got invalid object from sovd! %s" % e)
+            govobj.vote_delete(sovd)
             return (govobj, None)
 
         if created:
@@ -170,9 +170,9 @@ class GovernanceObject(BaseModel):
         # ATM, returns a tuple w/gov attributes and the govobj
         return (govobj, subobj)
 
-    def vote_delete(self, ravendarkd):
+    def vote_delete(self, sovd):
         if not self.voted_on(signal=VoteSignals.delete, outcome=VoteOutcomes.yes):
-            self.vote(ravendarkd, VoteSignals.delete, VoteOutcomes.yes)
+            self.vote(sovd, VoteSignals.delete, VoteOutcomes.yes)
         return
 
     def get_vote_command(self, signal, outcome):
@@ -180,8 +180,8 @@ class GovernanceObject(BaseModel):
                signal.name, outcome.name]
         return cmd
 
-    def vote(self, ravendarkd, signal, outcome):
-        import ravendarklib
+    def vote(self, sovd, signal, outcome):
+        import sovlib
 
         # At this point, will probably never reach here. But doesn't hurt to
         # have an extra check just in case objects get out of sync (people will
@@ -211,10 +211,10 @@ class GovernanceObject(BaseModel):
 
         vote_command = self.get_vote_command(signal, outcome)
         printdbg(' '.join(vote_command))
-        output = ravendarkd.rpc_command(*vote_command)
+        output = sovd.rpc_command(*vote_command)
 
         # extract vote output parsing to external lib
-        voted = ravendarklib.did_we_vote(output)
+        voted = sovlib.did_we_vote(output)
 
         if voted:
             printdbg('VOTE success, saving Vote object to database')
@@ -222,11 +222,11 @@ class GovernanceObject(BaseModel):
                  object_hash=self.object_hash).save()
         else:
             printdbg('VOTE failed, trying to sync with network vote')
-            self.sync_network_vote(ravendarkd, signal)
+            self.sync_network_vote(sovd, signal)
 
-    def sync_network_vote(self, ravendarkd, signal):
+    def sync_network_vote(self, sovd, signal):
         printdbg('\tSyncing network vote for object %s with signal %s' % (self.object_hash, signal.name))
-        vote_info = ravendarkd.get_my_gobject_votes(self.object_hash)
+        vote_info = sovd.get_my_gobject_votes(self.object_hash)
         for vdikt in vote_info:
             if vdikt['signal'] != signal.name:
                 continue
@@ -279,13 +279,13 @@ class Proposal(GovernanceClass, BaseModel):
     # src/governance-validators.cpp
     MAX_DATA_SIZE = 512
 
-    govobj_type = RAVENDARKD_GOVOBJ_TYPES['proposal']
+    govobj_type = SOVD_GOVOBJ_TYPES['proposal']
 
     class Meta:
         db_table = 'proposals'
 
     def is_valid(self):
-        import ravendarklib
+        import sovlib
 
         printdbg("In Proposal#is_valid, for Proposal: %s" % self.__dict__)
 
@@ -315,9 +315,9 @@ class Proposal(GovernanceClass, BaseModel):
                 printdbg("\tProposal amount [%s] is negative or zero, returning False" % self.payment_amount)
                 return False
 
-            # payment address is valid base58 ravendark addr, non-multisig
-            if not ravendarklib.is_valid_ravendark_address(self.payment_address, config.network):
-                printdbg("\tPayment address [%s] not a valid RavenDark address for network [%s], returning False" % (self.payment_address, config.network))
+            # payment address is valid base58 sov addr, non-multisig
+            if not sovlib.is_valid_sov_address(self.payment_address, config.network):
+                printdbg("\tPayment address [%s] not a valid Sovereign address for network [%s], returning False" % (self.payment_address, config.network))
                 return False
 
             # URL
@@ -330,7 +330,7 @@ class Proposal(GovernanceClass, BaseModel):
                 printdbg("\tProposal URL [%s] has whitespace, returning False" % self.name)
                 return False
 
-            # RavenDark Core restricts proposals to 512 bytes max
+            # Sovereign Core restricts proposals to 512 bytes max
             if len(self.serialise()) > (self.MAX_DATA_SIZE * 2):
                 printdbg("\tProposal [%s] is too big, returning False" % self.name)
                 return False
@@ -350,7 +350,7 @@ class Proposal(GovernanceClass, BaseModel):
 
     def is_expired(self, superblockcycle=None):
         from constants import SUPERBLOCK_FUDGE_WINDOW
-        import ravendarklib
+        import sovlib
 
         if not superblockcycle:
             raise Exception("Required field superblockcycle missing.")
@@ -362,7 +362,7 @@ class Proposal(GovernanceClass, BaseModel):
         # half the SB cycle, converted to seconds
         # add the fudge_window in seconds, defined elsewhere in Sentinel
         expiration_window_seconds = int(
-            (ravendarklib.blocks_to_seconds(superblockcycle) / 2) +
+            (sovlib.blocks_to_seconds(superblockcycle) / 2) +
             SUPERBLOCK_FUDGE_WINDOW
         )
         printdbg("\texpiration_window_seconds = %s" % expiration_window_seconds)
@@ -430,14 +430,14 @@ class Superblock(BaseModel, GovernanceClass):
     sb_hash = CharField()
     object_hash = CharField(max_length=64)
 
-    govobj_type = RAVENDARKD_GOVOBJ_TYPES['superblock']
+    govobj_type = SOVD_GOVOBJ_TYPES['superblock']
     only_masternode_can_submit = True
 
     class Meta:
         db_table = 'superblocks'
 
     def is_valid(self):
-        import ravendarklib
+        import sovlib
         import decimal
 
         printdbg("In Superblock#is_valid, for SB: %s" % self.__dict__)
@@ -445,7 +445,7 @@ class Superblock(BaseModel, GovernanceClass):
         # it's a string from the DB...
         addresses = self.payment_addresses.split('|')
         for addr in addresses:
-            if not ravendarklib.is_valid_ravendark_address(addr, config.network):
+            if not sovlib.is_valid_sov_address(addr, config.network):
                 printdbg("\tInvalid address [%s], returning False" % addr)
                 return False
 
@@ -478,8 +478,8 @@ class Superblock(BaseModel, GovernanceClass):
         return True
 
     def hash(self):
-        import ravendarklib
-        return ravendarklib.hashit(self.serialise())
+        import sovlib
+        return sovlib.hashit(self.serialise())
 
     def hex_hash(self):
         return "%x" % self.hash()

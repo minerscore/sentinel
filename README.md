@@ -1,10 +1,10 @@
-# RavenDark Sentinel
+# Sovereign Sentinel
 
-An all-powerful toolset for RavenDark.
+An all-powerful toolset for Sovereign.
 
-Sentinel is an autonomous agent for persisting, processing and automating RavenDark governance objects and tasks, and for expanded functions in the upcoming RavenDark V0.2.x release (Evolution).
+Sentinel is an autonomous agent for persisting, processing and automating Sovereign governance objects and tasks, and for expanded functions in the upcoming Sovereign V0.2.x release (Evolution).
 
-Sentinel is implemented as a Python application that binds to a local version 0.2.x ravendarkd instance on each RavenDark Masternode.
+Sentinel is implemented as a Python application that binds to a local version 0.2.x sovd instance on each Sovereign Masternode.
 
 This guide covers installing Sentinel onto an existing Masternode in Ubuntu 14.04 / 16.04.
 
@@ -21,15 +21,15 @@ Update system packages and ensure virtualenv is installed:
     $ sudo apt-get update
     $ sudo apt-get -y install python-virtualenv
 
-Make sure the local RavenDark daemon running is at least version 0.2.0 (20000)
+Make sure the local Sovereign daemon running is at least version 0.2.0 (20000)
 
-    $ ravendark-cli getinfo | grep version
+    $ sov-cli getinfo | grep version
 
 ### 1.2. Install Sentinel
 
 Clone the Sentinel repo and install Python dependencies.
 
-    $ git clone https://github.com/raven-dark/sentinel.git && cd sentinel
+    $ git clone https://github.com/SovCoinX/sentinel.git && cd sentinel
     $ virtualenv ./venv
     $ ./venv/bin/pip install -r requirements.txt
 
@@ -49,7 +49,7 @@ Test the config by running all tests from the sentinel folder you cloned into
 
     $ ./venv/bin/py.test ./test
 
-With all tests passing and crontab setup, Sentinel will stay in sync with ravendarkd and the installation is complete
+With all tests passing and crontab setup, Sentinel will stay in sync with sovd and the installation is complete
 
 ## Installation - Windows
 
@@ -63,7 +63,7 @@ pip install pyinstaller
 
 ### 1.2. build
 
-Download https://github.com/raven-dark/sentinel.git
+Download https://github.com/SovCoinX/sentinel.git
 
 Go to the unzipped folder
 
@@ -73,9 +73,9 @@ pyinstaller --onefile --paths=lib/ ./bin/sentinel.py
 
 ## Configuration
 
-An alternative (non-default) path to the `ravendark.conf` file can be specified in `sentinel.conf`:
+An alternative (non-default) path to the `sov.conf` file can be specified in `sentinel.conf`:
 
-    ravendark_conf=/path/to/ravendark.conf
+    sov_conf=/path/to/sov.conf
 
 ## Troubleshooting
 
@@ -85,4 +85,4 @@ To view debug output, set the `SENTINEL_DEBUG` environment variable to anything 
 
 ### License
 
-Released under the MIT license, under the same terms as RavenDarkCore itself. See [LICENSE](LICENSE) for more info.
+Released under the MIT license, under the same terms as SovereignCore itself. See [LICENSE](LICENSE) for more info.
